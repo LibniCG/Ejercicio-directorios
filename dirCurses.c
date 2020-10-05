@@ -4,69 +4,135 @@
 #include <dirent.h>
 #include <curses.h>
 #include <string.h>
+#include <fcntl.h>
+#include <ctype.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
 
+#define flechaArriba 0x1B5B41
+#define flechaAbajo 0x1B5B42
+#define enter 10
+
+/*** VARIABLES GLOBALES ***/
 struct s_dir {
     int tipo;
     char *nombre;
 } res[128];
 
+int fd; // Archivo a leer
+
 /*** DECLARACIÓN DE FUNCIONES ***/
 int leeChar();
 int leerDirectorio(char *cwd);
+char *hazLinea(char *base, int dir);
+char *mapFile(char *filePath);
+//char *navegarDirectorios(char *cwdLogin, char *cwd, int i);
 
 int main() {
-   int i = 0, j = 0, longDir = 0, c;
-   char *cwd, *cwdLogin;
+   int j = 0, k = 0, c; 
+   int i = 0; //Número de posición del elemento en la pantalla 
+   int pos = 0; //Número de posición del elemento del directorio 
+   int longDir = 0; //Número de elementos que tiene el directorio
+   int maxPantalla = 10; //Número de elementos máximo que puedo ver en la pantalla
+   int offset = 0; //A partir de qué directorio estoy viendo en pantalla
+   char *cwd; //Cadena que guarda la ruta 
 
    initscr(); //Determina el tipo de la terminal
    raw();
    noecho(); //Inhabilita mostrar el caracter leido
    cbreak(); //Desabilita el line buffering 
 
-    cwdLogin = getcwd(NULL,0); //Obtener el directorio de login
     cwd = getcwd(NULL,0); //Obtener la ruta actual 
     longDir = leerDirectorio(cwd); //Obtener la longitud del directorio y su contenido 
-    i = longDir;
+
+    move(1,10);
+    printw("longDir %d", longDir);
 
    do {
-      for (j=0; j < longDir ; j++) {
+      for (j=0; j < maxPantalla && (j + offset) < longDir ; j++) {
          if (j == i) {
            attron(A_REVERSE);
          }
-         mvprintw(5+j,5,res[j].nombre);
+         mvprintw(5+j,5,res[j+offset].nombre);
          attroff(A_REVERSE);
       }
       move(5+i,5);
       refresh();
-      c = leeChar();
+      c = leeChar(); 
       
       switch(c) {
-         case 0x1B5B41:
-            i = (i>0) ? i - 1 : longDir;
-            break;
-         case 0x1B5B42:
-            i = (i<longDir) ? i + 1 : 0;
-            break;
-         case 10:
-            system("clear");
-            /*if(strcmp(cwd,cwdLogin) != 0){ //Si te encuentras en el dir login no hagas nada, si no, muévete al dir login*/
-            if(strcmp(".", res[i].nombre) == 0){ //Si es un directorio "." regresa al directorio de login 
-                strcpy(cwd, cwdLogin);
-                longDir = leerDirectorio(cwd);
-            } else if(strcmp(".." res[i.nombre]) == 0){ //Si es un directorio ".." regresa a un directorio superior
-                
-            } else { 
-                strcat(cwd, "/");
-                strcat(cwd,res[i].nombre); //Otener el directorio al que se quiere mover
-                longDir = leerDirectorio(cwd); //Obtener la longitud del directorio y su contenido 
+         case flechaArriba:
+            if (i > 0 ){
+              i += -1; 
+            } else {
+              if (offset > 0) {
+                offset -= 1; 
+              } else {
+                offset = (longDir > maxPantalla) ? longDir - maxPantalla : 0;
+                i = (longDir > maxPantalla) ? maxPantalla - 1 : longDir - 1 ; 
+              }
+              clear();
             }
+            pos = offset + i; 
+            break;
+         case flechaAbajo:
+            if(longDir <= maxPantalla){
+              i = (pos == longDir-1) ? 0 : i + 1;
+            } else {
+                if (pos == longDir-1){ //Si se ha llegado al último elemento del directorio
+                  offset = 0;
+                  i = 0; 
+                } else {
+                  if(i == maxPantalla - 1){
+                    offset += i;
+                    i = 0;
+                  } else{
+                    i += 1;
+                  }
+                }
+              clear();
+            }
+            pos = offset + i;
+            break;
+         case enter:
+            offset = 0;         
+            clear();
+            if(strcmp("..", res[pos].nombre) == 0){ //Si es un directorio ".." regresa a un directorio padre
+                char *aux = strrchr(cwd, '/'); //Encuetra el último caracter /
+                *aux = 0; 
+                longDir = leerDirectorio(cwd);
+                i = 0; pos = 0;
+                clear();
+            } else if(res[pos].tipo == DT_DIR) { //Si es un directorio 
+                strcat(cwd, "/");
+                strcat(cwd,res[pos].nombre); //Otener el directorio al que se quiere mover
+                longDir = leerDirectorio(cwd); //Obtener la longitud del directorio y su contenido 
+                i = 0; pos = 0;
+                clear();
+            } else { //Si es un archivo
+                clear();
+                char *map = mapFile(res[pos].nombre);
+                if (map == NULL) {
+                  exit(EXIT_FAILURE);
+                }       
+                for(int k= 0; k<25; k++) {
+                    // Haz linea, base y offset
+                    char *l = hazLinea(map,k*16);
+                    mvprintw(k,0,l);
+                }
+                refresh();
+                getch();
+                close(fd);
+                i = 0; pos = 0;
+            }
+            //cwd = navegarDirectorios(cwdLogin, cwd, i);
             break;
          default:
-            // Nothing 
+            // Nada
             break;
       }
       move(2,10);
-      printw("Selección actual: %d  Directorio actual: %s Leí %d", i, cwd, c);
+      printw("i: %d  pos: %d  Offset %d Directorio actual: %s Leí %d", i, pos, offset, cwd, c);
    } while (c != 'q');
 
    endwin();   
@@ -104,3 +170,96 @@ int leerDirectorio(char *cwd){
     closedir(dir);
    return i;
 }
+
+char *hazLinea(char *base, int dir) {
+	char linea[100]; // La linea es mas pequeña
+	int o=0;
+	// Muestra 16 caracteres por cada linea
+	o += sprintf(linea,"%08x ",dir); // offset en hexadecimal
+	for(int i=0; i < 4; i++) {
+		unsigned char a,b,c,d;
+		a = base[dir+4*i+0];
+		b = base[dir+4*i+1];
+		c = base[dir+4*i+2];
+		d = base[dir+4*i+3];
+		o += sprintf(&linea[o],"%02x %02x %02x %02x ", a, b, c, d);
+	}
+	for(int i=0; i < 16; i++) {
+		if (isprint(base[dir+i])) {
+			o += sprintf(&linea[o],"%c",base[dir+i]);
+		}
+		else {
+			o += sprintf(&linea[o],".");
+		}
+	}
+	sprintf(&linea[o],"\n");
+
+	return(strdup(linea));
+}
+
+char *mapFile(char *filePath) {
+    //Abrir archivo 
+    fd = open(filePath, O_RDONLY);
+    if (fd == -1) {
+    	perror("Error abriendo el archivo");
+	    return(NULL);
+    }
+    //Mapea el archivo 
+    struct stat st;
+    fstat(fd,&st);
+    int fs = st.st_size;
+
+    char *map = mmap(0, fs, PROT_READ, MAP_SHARED, fd, 0);
+    if (map == MAP_FAILED) {
+    	close(fd);
+	    perror("Error mapeando el archivo");
+	    return(NULL);
+    }
+  return map;
+}
+
+/*char *navegarDirectorios(char *cwdLogin, char *cwd, int i){
+  char cwdDirAnt[256];
+  int login, longDir, prueba = 1; 
+
+  system("clear");
+  //Si te encuentras en el dir login no hagas nada
+  if(strcmp(cwd,cwdLogin) == 0){ 
+      login = 1;
+  } else {
+    login = 0;
+  }
+  //Si es un directorio "." regresa al directorio de login
+  if(strcmp(".", res[i].nombre) == 0){  
+      if(!login) {
+          strcpy(cwd,cwdLogin);
+          longDir = leerDirectorio(cwd);
+      }
+  //Si es un directorio ".." regresa a un directorio superior
+  } else if(strcmp("..", res[i].nombre) == 0){ 
+      if(!login) {
+          longDir = leerDirectorio(cwdDirAnt);
+      }
+  } else { 
+      if(!prueba) { //Si es un archivo 
+          system("clear");
+          char *map = mapFile(res[i].nombre);
+          if (map == NULL) {
+          exit(EXIT_FAILURE);
+          }       
+          for(int i= 0; i<25; i++) {
+              // Haz linea, base y offset
+              char *l = hazLinea(map,i*16);
+              mvprintw(i,0,l);
+          }
+          refresh();
+          close(fd);
+      } else { //Si es un directorio
+          strcpy(cwdDirAnt, cwd);
+          strcat(cwd, "/");
+          strcat(cwd,res[i].nombre); //Otener el directorio al que se quiere mover
+          longDir = leerDirectorio(cwd); //Obtener la longitud del directorio y su contenido 
+      }
+  }
+  return cwd;
+}*/
