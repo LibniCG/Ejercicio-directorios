@@ -11,6 +11,8 @@
 
 #define flechaArriba 0x1B5B41
 #define flechaAbajo 0x1B5B42
+#define flechaDerecha 0x1B5B43
+#define flechaIzquierda 0x1B5B44
 #define enter 10
 
 /*** VARIABLES GLOBALES ***/
@@ -44,9 +46,6 @@ int main() {
 
     cwd = getcwd(NULL,0); //Obtener la ruta actual 
     longDir = leerDirectorio(cwd); //Obtener la longitud del directorio y su contenido 
-
-    move(1,10);
-    printw("longDir %d", longDir);
 
    do {
       for (j=0; j < maxPantalla && (j + offset) < longDir ; j++) {
@@ -121,9 +120,43 @@ int main() {
                     mvprintw(k,0,l);
                 }
                 refresh();
-                getch();
+
+                int x = 9;
+                int y = 0;
+
+                do{
+                  move(0+y,x);
+                  c = leeChar();
+                  switch(c){
+                    case flechaArriba:
+                      if(y > 0){ 
+                        y -= 1;
+                      }
+                      break;
+                    case flechaAbajo:
+                      if(y < 24) {
+                        y += 1;
+                      }
+                      break; 
+                    case flechaDerecha:
+                      if(x > 8 && x < 72) {
+                        x = (x < 56) ? x + 3 : x + 1;
+                      } else {
+                        if (x > 60 && y < 24) {
+                          y += 1; x = 9; 
+                        }
+                      }
+                      break;
+                    case flechaIzquierda:
+                      if(x > 10) {
+                        x = (x > 57) ? x - 1 : x - 3;
+                      } 
+                    break;
+                  }
+                } while(c!=24);
                 close(fd);
-                i = 0; pos = 0;
+                clear();
+                i = 0; pos = 0;           
             }
             //cwd = navegarDirectorios(cwdLogin, cwd, i);
             break;
