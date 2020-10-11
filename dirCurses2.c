@@ -100,6 +100,7 @@ int main() {
       res[i].nombre=dp->d_name;
       i++;
    }
+   int cant = i;
    for(int j=0;j<maxPantalla;j++) {
 		 if(j == i) break;
      refresh();
@@ -132,8 +133,18 @@ int main() {
      c = getch();
      switch(c)
  		{	case KEY_UP:
- 				if(highlight == 1)
- 					highlight = i;
+ 				if(highlight == 1){ //Al inicio de la lista?
+           if (offset == 0){
+             if (cant > maxPantalla) { //Mas elementos que el max?
+             highlight = maxPantalla;
+             offset = cant - maxPantalla;
+             } else { // Dentro del max
+               highlight = cant;
+             }
+           } else {
+             --offset;
+           } 
+        }	
  				else
  					--highlight;
  				break;
@@ -242,6 +253,7 @@ int main() {
        res[i].tipo = dp->d_type;
        res[i].nombre=dp->d_name;
        i++;
+       cant = i;
     }
     for(int j=0;j<i;j++) {
        for(int k=j+1;k<i;k++){
@@ -264,7 +276,7 @@ int main() {
          mvprintw(3+count, 0, "%c %s", res[j].tipo == DT_DIR ? 'D' :'F',res[j].nombre);
 				 clrtoeol();
        }
-       mvprintw(1, 5, "Estoy en %d: Lei %s",highlight,res[highlight-1].nombre);
+       mvprintw(1, 5, "Estoy en %d: Off: %d Max: %d Lei %s ",highlight, offset, cant, res[highlight-1].nombre);
        clrtoeol();
        refresh();
   		 count++;
