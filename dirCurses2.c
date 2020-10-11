@@ -143,8 +143,8 @@ int main() {
              }
            } else {
              --offset;
-           } 
-        }	
+           }
+        }
  				else
  					--highlight;
  				break;
@@ -161,7 +161,7 @@ int main() {
 				}
  				break;
  			case 10:
- 				cur = res[highlight-1];
+ 				cur = res[highlight+offset-1];
         if(cur.tipo == DT_DIR) {
           if(strcmp(cur.nombre, "..") == 0) {
             char *aux = strrchr(ptr, '/'); //Encuetra el último caracter "/"
@@ -242,9 +242,10 @@ int main() {
             perror("Error al desmapear");
           }
           close(fd);
-          highlight = 1;
-					c = 0;
         }
+				highlight = 1;
+				offset = 0;
+				c = 0;
         clear();
         refresh();
  				break;
