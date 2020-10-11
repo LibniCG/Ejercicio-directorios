@@ -22,7 +22,7 @@ struct s_dir {
 } res[128];
 
 int fd; // Archivo a leer
-int fs; //Tamaño del archivo 
+int fs; //Tamaño del archivo
 
 /*** DECLARACIÓN DE FUNCIONES ***/
 int leeChar();
@@ -34,9 +34,9 @@ void pantallaArchivo(char *map, int base);
 
 int main() {
    int j = 0, k = 0; //Variables auxiliares
-   int c; 
-   int i = 0; //Número de posición del elemento en la pantalla 
-   int pos = 0; //Número de posición del elemento del directorio 
+   int c;
+   int i = 0; //Número de posición del elemento en la pantalla
+   int pos = 0; //Número de posición del elemento del directorio
    int longDir = 0; //Número de elementos que tiene el directorio
    int maxPantalla = 10; //Número de elementos máximo que puedo ver en la pantalla
    int offset = 0; //A partir de qué directorio estoy viendo en pantalla
@@ -45,14 +45,16 @@ int main() {
    char *cwd; //Ruta del directorio
    char *map; //Nombre de archivo
    long l;
+   long size = pathconf(".", _PC_PATH_MAX);
+   char ptr[size];
 
    initscr(); //Determina el tipo de la terminal
    raw();
    noecho(); //Inhabilita mostrar el caracter leido
-   cbreak(); //Desabilita el line buffering 
+   cbreak(); //Desabilita el line buffering
 
-    cwd = getcwd(NULL,0); //Obtener la ruta actual 
-    longDir = leerDirectorio(cwd); //Obtener la longitud del directorio y su contenido 
+    cwd = getcwd(NULL,0); //Obtener la ruta actual
+    longDir = leerDirectorio(cwd); //Obtener la longitud del directorio y su contenido
 
    do {
       for (j=0; j < maxPantalla && (j + offset) < longDir ; j++) {
@@ -64,22 +66,22 @@ int main() {
       }
       move(5+i,5);
       refresh();
-      c = leeChar(); 
-      
+      c = leeChar();
+
       switch(c) {
          case flechaArriba:
             if (i > 0 ){
-              i += -1; 
+              i += -1;
             } else {
               if (offset > 0) {
-                offset -= 1; 
+                offset -= 1;
               } else {
                 offset = (longDir > maxPantalla) ? longDir - maxPantalla : 0;
-                i = (longDir > maxPantalla) ? maxPantalla - 1 : longDir - 1 ; 
+                i = (longDir > maxPantalla) ? maxPantalla - 1 : longDir - 1 ;
               }
               clear();
             }
-            pos = offset + i; 
+            pos = offset + i;
             break;
          case flechaAbajo:
             if(longDir <= maxPantalla){
@@ -87,7 +89,7 @@ int main() {
             } else {
                 if (pos == longDir-1){ //Si se ha llegado al último elemento del directorio
                   offset = 0;
-                  i = 0; 
+                  i = 0;
                 } else {
                   if(i == maxPantalla - 1){ //Si llegó al número máximo de elementos en pantalla
                     offset += i;
@@ -101,30 +103,40 @@ int main() {
             pos = offset + i;
             break;
          case enter:
-            offset = 0;         
+            offset = 0;
             clear();
             if(strcmp("..", res[pos].nombre) == 0){ //Si es un directorio ".." regresa a un directorio padre
                 char *aux = strrchr(cwd, '/'); //Encuetra el último caracter "/"
                 if(aux != cwd) {
-                  *aux = 0; 
+                  *aux = '\0';
                 } else {
-                  *(aux+1) = 0;
-                } 
+                  *(aux+1) = '\0';
+                }
                 longDir = leerDirectorio(cwd);
                 i = 0; pos = 0;
                 clear();
-            } else if(res[pos].tipo == DT_DIR) { //Si es un directorio 
+            } else if(res[pos].tipo == DT_DIR) { //Si es un directorio
                 strcat(cwd, "/");
                 strcat(cwd,res[pos].nombre); //Otener el directorio al que se quiere mover
-                longDir = leerDirectorio(cwd); //Obtener la longitud del directorio y su contenido 
+                longDir = leerDirectorio(cwd); //Obtener la longitud del directorio y su contenido
                 i = 0; pos = 0;
                 clear();
             } else { //Si es un archivo
                 clear();
-                map = mapFile(res[pos].nombre);
+                refresh();
+                // char *ptr;
+                sprintf(ptr, "%s/%s", cwd, res[pos].nombre);
+                // printw("%s", ptr);
+                // refresh();
+                // char t;
+                // do {
+                //   t = getch();
+                // } while(t != 'a');
+
+                map = mapFile(ptr);
                 if (map == NULL) {
                   exit(EXIT_FAILURE);
-                }       
+                }
                 for(int k= 0; k<25; k++) {
                     // Haz linea, base y offset
                     char *linea = hazLinea(map,k*16);
@@ -137,7 +149,7 @@ int main() {
                   c = leeChar();
                   switch(c){
                     case flechaArriba:
-                      if(y > 0){ 
+                      if(y > 0){
                         y -= 1;
                       }
                       break;
@@ -156,26 +168,26 @@ int main() {
                         }
                         pantallaArchivo(map,offset*16);*/
                       }
-                      break; 
+                      break;
                     case flechaDerecha:
                       if(x > 8 && x < 72) {
                         x = (x < 56) ? x + 3 : x + 1;
                       } else {
                         if (x > 60 && y < 24) {
-                          y += 1; x = 9; 
+                          y += 1; x = 9;
                         }
                       }
                       break;
                     case flechaIzquierda:
                       if(x > 10) {
                         x = (x > 57) ? x - 1 : x - 3;
-                      } 
+                      }
                     break;
 
                     default:
                     // Verificar si estamos en la parte hexadecimal o decimal
                       if(x < 56){
-                        //Verficar que sea un dígito hexadecimal 
+                        //Verficar que sea un dígito hexadecimal
                         char n = tolower(c);
                         if((n >= '0' && n <= '9') || (n >= 'a' && n <= 'f')) {
                           char c1 = leeChar();
@@ -198,7 +210,7 @@ int main() {
                         }
                     } else {
                       char c1 = leeChar();
-                      map[(offset + y)*16+x] = l;    
+                      map[(offset + y)*16+x] = l;
                       if (isprint(c1)) {
                           sprintf(&map[offset + y*16 + x],"%c",c1);
                       }
@@ -211,7 +223,8 @@ int main() {
                 } while(c!=24);
                 close(fd);
                 clear();
-                i = 0; pos = 0;           
+                refresh();
+                i = 0; pos = 0;
             }
             //cwd = navegarDirectorios(cwdLogin, cwd, i);
             break;
@@ -224,23 +237,23 @@ int main() {
 
       move(25,10);
       printw("Para salir presione 'q'");
-      
+
    } while (c != 'q');
 
-   endwin();   
+   endwin();
    return 0;
 
    //memcpy
    //destino, fuente, cuánto voy a copiar
 
-   
+
 }
 
 int leeChar() {
   int chars[5];
   int ch,i=0;
   nodelay(stdscr, TRUE);
-  while((ch = getch()) == ERR); // Espera activa 
+  while((ch = getch()) == ERR); // Espera activa
   ungetch(ch);
   while((ch = getch()) != ERR) {
     chars[i++]=ch;
@@ -257,7 +270,7 @@ int leeChar() {
 int leerDirectorio(char *cwd){
     DIR *dir = opendir(cwd);
     struct dirent *dp;
-    int i = 0; 
+    int i = 0;
 
     while((dp=readdir(dir)) != NULL) {
       res[i].tipo = dp->d_type;
@@ -295,13 +308,13 @@ char *hazLinea(char *base, int dir) {
 }
 
 char *mapFile(char *filePath) {
-    //Abrir archivo 
+    //Abrir archivo
     fd = open(filePath, O_RDWR);
     if (fd == -1) {
     	perror("Error abriendo el archivo");
 	    return(NULL);
     }
-    //Mapea el archivo 
+    //Mapea el archivo
     struct stat st;
     fstat(fd,&st);
     fs = st.st_size;
@@ -325,5 +338,5 @@ void pantallaArchivo(char *map, int base) {
   refresh();
 }
 /*char *navegarDirectorios(char *cwdLogin, char *cwd, int i){
-  
+
 }*/
