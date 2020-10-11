@@ -77,6 +77,9 @@ int main() {
    char *ptr;
 	 char *ptr2;
 
+	 int maxPantalla = 10;
+	 int offset = 0;
+
    size = pathconf(".", _PC_PATH_MAX);
 
    initscr();
@@ -97,7 +100,8 @@ int main() {
       res[i].nombre=dp->d_name;
       i++;
    }
-   for(int j=0;j<i;j++) {
+   for(int j=0;j<maxPantalla;j++) {
+		 if(j == i) break;
      refresh();
       for(int k=j+1;k<i;k++){
          if(strcmp(res[j].nombre,res[k].nombre)>0){
@@ -107,17 +111,22 @@ int main() {
          }
       }
     }
-   for(int j=0; j<i; j++) {
-     if(highlight == j + 1) {
+		int count = 0;
+   for(int j=offset; j<maxPantalla+offset; j++) {
+		 if(j >= i) break;
+     if(highlight == count + 1) {
        attron(A_REVERSE);
-       mvprintw(3+j, 0, "%c %s", res[j].tipo == DT_DIR ? 'D' :'F',res[j].nombre);
+       mvprintw(3+count, 0, "%c %s", res[j].tipo == DT_DIR ? 'D' :'F',res[j].nombre);
+			 clrtoeol();
        attroff(A_REVERSE);
      } else {
-       mvprintw(3+j, 0, "%c %s", res[j].tipo == DT_DIR ? 'D' :'F',res[j].nombre);
+       mvprintw(3+count, 0, "%c %s", res[j].tipo == DT_DIR ? 'D' :'F',res[j].nombre);
+			 clrtoeol();
      }
      mvprintw(1, 5, "Estoy en %d: Lei %s",highlight,res[highlight-1].nombre);
      clrtoeol();
      refresh();
+		 count++;
    }
    do {
      c = getch();
@@ -129,10 +138,16 @@ int main() {
  					--highlight;
  				break;
  			case KEY_DOWN:
- 				if(highlight == i)
+ 				if((highlight+offset) == i){
  					highlight = 1;
- 				else
- 					++highlight;
+					offset = 0;
+ 				}else {
+					if(highlight == maxPantalla) {
+						offset++;
+					} else {
+							++highlight;
+					}
+				}
  				break;
  			case 10:
  				cur = res[highlight-1];
@@ -237,18 +252,23 @@ int main() {
           }
        }
      }
-    for(int j=0; j<i; j++) {
-      if(highlight == j + 1) {
-        attron(A_REVERSE);
-        mvprintw(3+j, 0, "%c %s", res[j].tipo == DT_DIR ? 'D' :'F',res[j].nombre);
-        attroff(A_REVERSE);
-      } else {
-        mvprintw(3+j, 0, "%c %s", res[j].tipo == DT_DIR ? 'D' :'F',res[j].nombre);
-      }
-      mvprintw(1, 5, "Estoy en %d: Lei %s",highlight,res[highlight-1].nombre);
-      clrtoeol();
-      refresh();
-    }
+		 count = 0;
+		 for(int j=offset; j<maxPantalla+offset; j++) {
+  		 if(j >= i) break;
+       if(highlight == count + 1) {
+         attron(A_REVERSE);
+         mvprintw(3+count, 0, "%c %s", res[j].tipo == DT_DIR ? 'D' :'F',res[j].nombre);
+				 clrtoeol();
+         attroff(A_REVERSE);
+       } else {
+         mvprintw(3+count, 0, "%c %s", res[j].tipo == DT_DIR ? 'D' :'F',res[j].nombre);
+				 clrtoeol();
+       }
+       mvprintw(1, 5, "Estoy en %d: Lei %s",highlight,res[highlight-1].nombre);
+       clrtoeol();
+       refresh();
+  		 count++;
+     }
   } while(c != 'q');
   // clrtoeol();
   endwin();
