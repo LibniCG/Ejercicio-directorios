@@ -45,8 +45,6 @@ int main() {
    char *cwd; //Ruta del directorio
    char *map; //Nombre de archivo
    long l;
-   long size = pathconf(".", _PC_PATH_MAX);
-   char ptr[size];
 
    initscr(); //Determina el tipo de la terminal
    raw();
@@ -108,9 +106,9 @@ int main() {
             if(strcmp("..", res[pos].nombre) == 0){ //Si es un directorio ".." regresa a un directorio padre
                 char *aux = strrchr(cwd, '/'); //Encuetra el último caracter "/"
                 if(aux != cwd) {
-                  *aux = '\0';
+                  *aux = 0;
                 } else {
-                  *(aux+1) = '\0';
+                  *(aux+1) = 0;
                 }
                 longDir = leerDirectorio(cwd);
                 i = 0; pos = 0;
@@ -123,17 +121,7 @@ int main() {
                 clear();
             } else { //Si es un archivo
                 clear();
-                refresh();
-                // char *ptr;
-                sprintf(ptr, "%s/%s", cwd, res[pos].nombre);
-                // printw("%s", ptr);
-                // refresh();
-                // char t;
-                // do {
-                //   t = getch();
-                // } while(t != 'a');
-
-                map = mapFile(ptr);
+                map = mapFile(res[pos].nombre);
                 if (map == NULL) {
                   exit(EXIT_FAILURE);
                 }
@@ -223,7 +211,6 @@ int main() {
                 } while(c!=24);
                 close(fd);
                 clear();
-                refresh();
                 i = 0; pos = 0;
             }
             //cwd = navegarDirectorios(cwdLogin, cwd, i);
