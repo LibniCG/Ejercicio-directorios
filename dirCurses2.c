@@ -116,7 +116,7 @@ int main() {
        mvprintw(3+j, 0, "%c %s", res[j].tipo == DT_DIR ? 'D' :'F',res[j].nombre);
      }
      mvprintw(1, 5, "Estoy en %d: Lei %s",highlight,res[highlight-1].nombre);
-     // clrtoeol();
+     clrtoeol();
      refresh();
    }
    do {
@@ -246,7 +246,7 @@ int main() {
         mvprintw(3+j, 0, "%c %s", res[j].tipo == DT_DIR ? 'D' :'F',res[j].nombre);
       }
       mvprintw(1, 5, "Estoy en %d: Lei %s",highlight,res[highlight-1].nombre);
-      // clrtoeol();
+      clrtoeol();
       refresh();
     }
   } while(c != 'q');
