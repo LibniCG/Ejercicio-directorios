@@ -10,8 +10,10 @@
 #include <ctype.h>
 
 int fd;
+int lineas;
 
-char *hazLinea(char *base, int dir) {
+char *hazLinea(char *base, unsigned long long dir) {
+	// mvprintw(27,0,"%d", lineas);
 	char linea[100]; // La linea es mas pequeña
 	int o=0;
 	// Muestra 16 caracteres por cada linea
@@ -39,7 +41,7 @@ char *hazLinea(char *base, int dir) {
 
 char *mapFile(char *filePath) {
     /* Abre archivo */
-    fd = open(filePath, O_RDONLY);
+    fd = open(filePath, O_RDWR);
     if (fd == -1) {
     	perror("Error abriendo el archivo");
 	    return(NULL);
@@ -49,8 +51,9 @@ char *mapFile(char *filePath) {
     struct stat st;
     fstat(fd,&st);
     int fs = st.st_size;
+		lineas = fs / 16;
 
-    char *map = mmap(0, fs, PROT_READ, MAP_SHARED, fd, 0);
+    char *map = mmap(0, fs, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (map == MAP_FAILED) {
     	close(fd);
 	    perror("Error mapeando el archivo");
@@ -76,6 +79,8 @@ int main() {
    char *buf;
    char *ptr;
 	 char *ptr2;
+
+	 long l;
 
 	 int maxPantalla = 10;
 	 int offset = 0;
@@ -206,26 +211,43 @@ int main() {
             exit(EXIT_FAILURE);
             }
 
-          for(int i= 0; i<25; i++) {
-          	// Haz linea, base y offset
-          	char *l = hazLinea(map,i*16);
-      	    mvprintw(i,0,l);
-          }
-          refresh();
       		int c2;
       		int x = 0;
       		int y = 0;
       		int px = 0;
+					int offsetArch = 0;
       		do {
+						for(int i= 0; i<25; i++) {
+							// Haz linea, base y offset
+							char *l = hazLinea(map,(unsigned long long)(i+offsetArch)*16);
+							mvprintw(i,0,l);
+						}
+						mvprintw(27,0,"X: %d Y: %d", x, y+offsetArch);
+						refresh();
       			px = (x<16) ? x*3 : 32+x;
       			move(0+y, 9+px);
       			c2 = getch();
       			switch(c2) {
       				case KEY_UP:
-      					y-=1;
+								if(y == 0) {
+									if(offsetArch != 0) {
+										offsetArch--;
+									}
+								} else {
+									y-=1;
+								}
       					break;
       				case KEY_DOWN:
-      					y+=1;
+								// mvprintw(27,0,"Y: %d, O: %d, Lin: %d", y, offsetArch, lineas);
+								if(y == 24) {
+									if((y+offsetArch) >= lineas) {
+										// mvprintw(27,0,"EOF");
+									} else {
+										offsetArch++;
+									}
+								} else {
+									y+=1;
+								}
       					break;
       				case KEY_LEFT:
       					x-=1;
@@ -233,7 +255,46 @@ int main() {
       				case KEY_RIGHT:
       					x+=1;
       					break;
-      			}
+							default:
+								if(x >= 0 && x <= 15) {
+									// char c3 = getch();
+									char n3 = tolower(c2);
+									if((n3 >= '0' && n3 <= '9') || (n3 >= 'a' && n3 <= 'f')) {
+										char c4 = getch();
+										char n4 = tolower(c4);
+										if((n4 >= '0' && n4 <= '9') || (n4 >= 'a' && n4 <= 'f')) {
+											char hd[3];
+											hd[0] = n3;
+											hd[1] = n4;
+											hd[2] = 0;
+											l = strtol(hd, NULL, 16);
+											map[(offsetArch+y)*16+x] = l;
+											for(int i= 0; i<25; i++) {
+												// Haz linea, base y offset
+												char *lin = hazLinea(map,(unsigned long long)(i+offsetArch)*16);
+												mvprintw(i,0,lin);
+											}
+											// mvprintw(27,0,"X: %d Y: %d", x, y+offsetArch);
+											refresh();
+										} else {
+											move(28,10);
+											addstr("Caracter inválido");
+										}
+									} else {
+										move(28,10);
+										addstr("Caracter inválido");
+									}
+								} else {
+									// char c3 = getch();
+									// map[(offsetArch+y)*16+x] = c3;
+									if(isprint(c2)) {
+										sprintf(&map[(offsetArch + y-1) * 16 + x], "%c", c2);
+									} else {
+										sprintf(&map[(offsetArch + y-1) * 16 + x], ".");
+									}
+								}
+								break;
+							}
       		} while(c2!=24);
           // leeChar();
           // endwin();
