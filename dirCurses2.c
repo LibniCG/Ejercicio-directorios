@@ -12,6 +12,7 @@
 int fd;
 int fs;
 int lineas;
+int countModif = 0;
 
 char *hazLinea(char *base, unsigned long long dir) {
 	// mvprintw(27,0,"%d", lineas);
@@ -54,12 +55,13 @@ char *mapFile(char *filePath) {
     fs = st.st_size;
 		lineas = fs / 16;
 
-    char *map = mmap(0, fs, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    char *map = mmap(NULL, fs, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (map == MAP_FAILED) {
     	close(fd);
 	    perror("Error mapeando el archivo");
 	    return(NULL);
     }
+		// close(fd);
 
   return map;
 }
@@ -208,6 +210,7 @@ int main() {
           refresh();
           sprintf(ptr2, "%s/%s", ptr, cur.nombre);
           char *map = mapFile(ptr2);
+					countModif=0;
           if (map == NULL) {
             exit(EXIT_FAILURE);
             }
@@ -223,7 +226,7 @@ int main() {
 							char *l = hazLinea(map,(unsigned long long)(i+offsetArch)*16);
 							mvprintw(i,0,l);
 						}
-						mvprintw(27,0,"X: %d Y: %d", x, y+offsetArch);
+						mvprintw(27,0,"X: %d Y: %d FS: %d Mod: %d", x, y+offsetArch, fs, countModif*sizeof(char));
 						refresh();
       			px = (x<16) ? x*3 : 32+x;
       			move(0+y, 9+px);
@@ -266,6 +269,7 @@ int main() {
                 memcpy(&map[(offsetArch+y)*16+x], &map[(offsetArch+y)*16+x+1],fs-(offsetArch+y)*16+x);
                 break;
 							default:
+								if(c2 == 24) break;
 								if(x >= 0 && x <= 15) {
 									// char c3 = getch();
 									char n3 = tolower(c2);
@@ -279,6 +283,7 @@ int main() {
 											hd[2] = 0;
 											l = strtol(hd, NULL, 16);
 											map[(offsetArch+y)*16+x] = l;
+											countModif++;
 											for(int i= 0; i<25; i++) {
 												// Haz linea, base y offset
 												char *lin = hazLinea(map,(unsigned long long)(i+offsetArch)*16);
@@ -295,13 +300,16 @@ int main() {
 										addstr("Caracter inválido");
 									}
 								} else {
+									mvprintw(28,0,"%c", c2);
 									// char c3 = getch();
-									// map[(offsetArch+y)*16+x] = c3;
-									if(isprint(c2)) {
-										sprintf(&map[(offsetArch + y-1) * 16 + x], "%c", c2);
-									} else {
-										sprintf(&map[(offsetArch + y-1) * 16 + x], ".");
-									}
+									// map[(offsetArch+y)*16+x] = c2;
+									map[(offsetArch+y-1)*16+x] = c2;
+									// if(isprint(c2))
+										// sprintf(&map[(offsetArch + y-1) * 16 + x], "%c", c2);
+									// } else {
+										// sprintf(&map[(offsetArch + y-1) * 16 + x], "%c", '.');
+									// }
+									countModif++;
 								}
 								break;
 							}
@@ -309,8 +317,9 @@ int main() {
           // leeChar();
           // endwin();
 
-          if (munmap(map, fd) == -1) {
+          if (munmap(map, fs+(countModif*sizeof(char))) == -1) {
             perror("Error al desmapear");
+						exit(1);
           }
           close(fd);
         }
