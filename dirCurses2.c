@@ -10,6 +10,7 @@
 #include <ctype.h>
 
 int fd;
+int fs;
 int lineas;
 
 char *hazLinea(char *base, unsigned long long dir) {
@@ -50,7 +51,7 @@ char *mapFile(char *filePath) {
     /* Mapea archivo */
     struct stat st;
     fstat(fd,&st);
-    int fs = st.st_size;
+    fs = st.st_size;
 		lineas = fs / 16;
 
     char *map = mmap(0, fs, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
@@ -250,11 +251,20 @@ int main() {
 								}
       					break;
       				case KEY_LEFT:
-      					x-=1;
+      					if(x > 0) {
+                  x-=1;
+                }
       					break;
       				case KEY_RIGHT:
-      					x+=1;
+      					if (x < 31) {
+                  x+=1;
+                } else {
+                  x = 0; y += 1;
+                }
       					break;
+              case KEY_DC:
+                memcpy(&map[(offsetArch+y)*16+x], &map[(offsetArch+y)*16+x+1],fs-(offsetArch+y)*16+x);
+                break;
 							default:
 								if(x >= 0 && x <= 15) {
 									// char c3 = getch();
